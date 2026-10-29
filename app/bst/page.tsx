@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import TreeCanvas, {
+  type GhostNode,
   type NodeStatus,
-  type NullHole,
 } from "@/components/TreeCanvas";
 import {
   Button,
@@ -34,6 +34,12 @@ import {
   traversalTrace,
 } from "@/lib/bst";
 import { idOf, layout, pathIds } from "@/lib/layout";
+
+/** Un hueco nulo: cuelga de un nodo padre, en un lado. */
+interface NullHole {
+  parentId: string;
+  side: "left" | "right";
+}
 
 /** Un fotograma de animación. */
 interface AnimStep {
@@ -67,6 +73,11 @@ function parseList(text: string): number[] {
     .filter((n) => Number.isFinite(n))
     .map((n) => Math.trunc(n));
 }
+
+/** Distancia vertical entre niveles del dibujo (debe casar con lib/layout). */
+const V_GAP = 92;
+/** Desplazamiento horizontal del hueco nulo respecto de su padre. */
+const HOLE_DX = 46;
 
 export default function BstPage() {
   const [root, setRoot] = useState<BstNode | null>(null);
@@ -162,20 +173,17 @@ export default function BstPage() {
     // insert() siempre devuelve la traza del descenso; un duplicado solo se
     // descubre al llegar a su nodo, así que también se anima.
     const { root: newRoot, steps, inserted } = insert(root, next);
-    const frames: AnimStep[] = steps.map((s) => {
-      const visitedIds = s.visited
+    const frames: AnimStep[] = steps.map((s) => ({
+      pathIds: s.visited
         .map((v) => idOf(root, v))
-        .filter((id): id is string => id !== null);
-      return {
-        pathIds: visitedIds,
-        currentId: s.at === null ? null : idOf(root, s.at),
-        currentStatus: "current" as NodeStatus,
-        message: s.message,
-        nullHole: s.nullHole
-          ? { parentId: s.nullHole.parentId, side: s.nullHole.side }
-          : null,
-      };
-    });
+        .filter((id): id is string => id !== null),
+      currentId: s.at === null ? null : idOf(root, s.at),
+      currentStatus: "current" as NodeStatus,
+      message: s.message,
+      nullHole: s.nullHole
+        ? { parentId: s.nullHole.parentId, side: s.nullHole.side }
+        : null,
+    }));
     setOutput("");
     setOutputIds([]);
     setEdgeStatus({});
@@ -320,10 +328,23 @@ export default function BstPage() {
   };
 
   const busy = running || queue.length > 0;
-  // Hueco nulo efímero del fotograma actual: aparece al comprobar y
-  // desaparece en el siguiente paso, dando a entender que se visitó.
+
+  // Hueco nulo efímero del fotograma actual: aparece al comprobar un hijo
+  // nulo y desaparece en el siguiente paso, dando a entender que se visitó.
   const hole: NullHole | null =
     anim && stepIdx < anim.length ? (anim[stepIdx].nullHole ?? null) : null;
+  const byId = new Map(tree.nodes.map((n) => [n.id, n]));
+  const ghosts: GhostNode[] = [];
+  if (hole) {
+    const parent = byId.get(hole.parentId);
+    if (parent) {
+      ghosts.push({
+        x: parent.x + (hole.side === "left" ? -HOLE_DX : HOLE_DX),
+        y: parent.y + V_GAP,
+        from: { x: parent.x, y: parent.y },
+      });
+    }
+  }
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -415,7 +436,7 @@ export default function BstPage() {
           tree={tree}
           status={status}
           edgeStatus={edgeStatus}
-          nullHole={hole}
+          ghosts={ghosts}
         />
 
         <div className="space-y-6">

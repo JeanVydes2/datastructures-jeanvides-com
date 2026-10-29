@@ -23,9 +23,7 @@ tiene su propia página, seleccionable desde la barra lateral.
   - El árbol se dibuja como SVG, posicionando los nodos por índice inorden para
     que ningún subárbol se solape.
   - Control de **velocidad** de la animación (lento, normal, rápido).
-- **Montículo** (`/heap`): **min-heap** y **max-heap** (conmutables), con
-  inserción (burbujeo hacia arriba), extracción de la raíz, arreglo subyacente,
-  altura, hojas y orden por extracción.
+- **Montículo** (`/heap`): **min-heap** y **max-heap** (conmutables), con inserción (burbujeo hacia arriba), extracción de la raíz, arreglo subyacente, altura, hojas y orden por extracción. Comparte con el árbol la entrada por listas, el control de velocidad, el recorrido de un duplicado hasta su nodo y los hijos nulos dibujados un instante al comprobarlos.
 
 La interfaz es monocroma: estados por relleno y grosor, sin color ni
 gradientes. Las animaciones usan transiciones cortas y se desactivan solas con

@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import TreeCanvas, { type NodeStatus } from "@/components/TreeCanvas";
+import { useEffect, useMemo, useRef, useState } from "react";
+import TreeCanvas, {
+  type GhostNode,
+  type NodeStatus,
+} from "@/components/TreeCanvas";
 import {
   Button,
   Card,
@@ -9,15 +12,21 @@ import {
   MetricRow,
   NumberInput,
   PageHeader,
+  SPEED_MS,
+  SpeedControl,
+  type Speed,
   StatusBar,
   Swatch,
+  TextInput,
 } from "@/components/ui";
 import {
   type Heap,
+  type HeapHole,
   type HeapKind,
   type HeapStep,
   emptyHeap,
   heapExtract,
+  heapGeometry,
   heapHeight,
   heapInsert,
   heapLayout,
@@ -26,25 +35,41 @@ import {
 
 type PendingCommit =
   | { kind: "insert"; heap: Heap }
+  | { kind: "duplicate"; value: number }
   | { kind: "extract"; heap: Heap; top: number | null }
   | null;
 
-const SPEED_MS = 780;
+/** Convierte "5, 3, 8" en [5, 3, 8]. Ignora lo que no sea entero. */
+function parseList(text: string): number[] {
+  return text
+    .split(/[\s,;]+/)
+    .map((t) => t.trim())
+    .filter((t) => t !== "")
+    .map((t) => Number(t))
+    .filter((n) => Number.isFinite(n))
+    .map((n) => Math.trunc(n));
+}
 
 export default function HeapPage() {
   const [kind, setKind] = useState<HeapKind>("min");
   const [heap, setHeap] = useState<Heap>(() => emptyHeap("min"));
   const [value, setValue] = useState("");
+  const [list, setList] = useState("");
   const [steps, setSteps] = useState<HeapStep[] | null>(null);
   const [idx, setIdx] = useState(0);
   const [commit, setCommit] = useState<PendingCommit>(null);
   const [message, setMessage] = useState(
-    "El montículo está vacío. Inserta un valor para verlo subir hasta su lugar.",
+    "El montículo está vacío. Inserta valores para verlos subir hasta su lugar.",
   );
   const [tone, setTone] = useState<"info" | "success" | "error">("info");
+  const [queue, setQueue] = useState<number[]>([]);
+  const [speed, setSpeed] = useState<Speed>("normal");
 
   const running = steps !== null;
+  const stepMs = SPEED_MS[speed];
+  const startedRef = useRef<string | null>(null);
 
+  // --- Aplica el resultado cuando una animación termina. ---
   useEffect(() => {
     if (!steps) return;
     if (idx >= steps.length) {
@@ -54,6 +79,11 @@ export default function HeapPage() {
         setHeap(commit.heap);
         setMessage("Valor insertado manteniendo la propiedad de montículo.");
         setTone("success");
+      } else if (commit?.kind === "duplicate") {
+        setMessage(
+          `${commit.value} ya existe: se descubrió al llegar a su nodo, por eso no se duplica.`,
+        );
+        setTone("error");
       } else if (commit?.kind === "extract") {
         setHeap(commit.heap);
         setMessage(
@@ -68,9 +98,28 @@ export default function HeapPage() {
     }
     setMessage(steps[idx].message);
     setTone("info");
-    const t = setTimeout(() => setIdx((i) => i + 1), SPEED_MS);
+    const t = setTimeout(() => setIdx((i) => i + 1), stepMs);
     return () => clearTimeout(t);
-  }, [steps, idx, commit]);
+  }, [steps, idx, commit, stepMs]);
+
+  // --- Procesa la cola: inserta el siguiente valor uno a uno. ---
+  useEffect(() => {
+    if (running || queue.length === 0) return;
+    const key = `${queue.join(",")}|${heap.data.join(",")}|${kind}|${idx}`;
+    if (startedRef.current === key) return;
+    startedRef.current = key;
+
+    const [next, ...rest] = queue;
+    setQueue(rest);
+    const { heap: after, steps: frames, inserted } = heapInsert(heap, next);
+    setSteps(frames);
+    setIdx(0);
+    setCommit(
+      inserted
+        ? { kind: "insert", heap: after }
+        : { kind: "duplicate", value: next },
+    );
+  }, [queue, running, heap, kind, idx]);
 
   const frame = steps ? steps[Math.min(idx, steps.length - 1)] : null;
   const displayHeap: Heap = useMemo(
@@ -83,17 +132,45 @@ export default function HeapPage() {
     if (frame) {
       for (const i of frame.route) st[String(i)] = "visited";
       for (const i of frame.hot)
-        st[String(i)] = frame.action === "swap" ? "current" : "found";
+        st[String(i)] =
+          frame.action === "swap"
+            ? "current"
+            : frame.action === "duplicate"
+              ? "found"
+              : "visited";
     }
     return st;
   }, [frame]);
 
   const tree = useMemo(() => heapLayout(displayHeap), [displayHeap]);
 
+  // Hijos nulos que faltan en este fotograma, dibujados como nodos "null".
+  const ghosts = useMemo<GhostNode[]>(() => {
+    if (!frame || frame.holes.length === 0) return [];
+    const n = displayHeap.data.length;
+    const geo = heapGeometry(n);
+    const byId = new Map(tree.nodes.map((node) => [node.id, node]));
+    return frame.holes.flatMap((h: HeapHole) => {
+      const parent = byId.get(String(h.parentIndex));
+      if (!parent) return [];
+      const childIdx =
+        h.side === "left" ? 2 * h.parentIndex + 1 : 2 * h.parentIndex + 2;
+      const pos = geo.pos(childIdx);
+      return [
+        {
+          x: pos.x,
+          y: pos.y,
+          from: { x: parent.x, y: parent.y },
+        },
+      ];
+    });
+  }, [frame, displayHeap, tree]);
+
   const changeKind = (next: HeapKind) => {
     if (running) return;
     setKind(next);
     setHeap(emptyHeap(next));
+    setQueue([]);
     setSteps(null);
     setMessage(
       next === "min"
@@ -103,46 +180,58 @@ export default function HeapPage() {
     setTone("info");
   };
 
-  const parse = () => {
+  const parseOne = () => {
     const n = Number(value);
     if (value.trim() === "" || Number.isNaN(n)) return null;
     return Math.trunc(n);
   };
 
-  const startAnim = (frames: HeapStep[], pending: PendingCommit) => {
-    setValue("");
-    setSteps(frames);
-    setIdx(0);
-    setCommit(pending);
-  };
-
   const doInsert = () => {
-    if (running) return;
-    const n = parse();
+    if (running || queue.length > 0) return;
+    const n = parseOne();
     if (n === null) {
       setMessage("Escribe un número entero para insertar.");
       setTone("error");
       return;
     }
-    const { heap: next, steps: frames } = heapInsert(heap, n);
-    startAnim(frames, { kind: "insert", heap: next });
+    setValue("");
+    startedRef.current = null;
+    setQueue([n]);
+  };
+
+  const insertList = () => {
+    if (running || queue.length > 0) return;
+    const values = parseList(list);
+    if (values.length === 0) {
+      setMessage("Escribe una lista de números, por ejemplo: 5, 3, 8, 1, 9.");
+      setTone("error");
+      return;
+    }
+    setList("");
+    startedRef.current = null;
+    setQueue(values);
+    setMessage(`Insertando ${values.length} valor(es) uno a uno...`);
+    setTone("info");
   };
 
   const doExtract = () => {
-    if (running || heap.data.length === 0) return;
+    if (running || queue.length > 0 || heap.data.length === 0) return;
     const { heap: next, steps: frames, top } = heapExtract(heap);
-    startAnim(frames, { kind: "extract", heap: next, top });
+    setSteps(frames);
+    setIdx(0);
+    setCommit({ kind: "extract", heap: next, top });
   };
 
   const reset = () => {
     if (running) return;
     setHeap(emptyHeap(kind));
+    setQueue([]);
     setMessage("Montículo vacío.");
     setTone("info");
   };
 
   const demo = () => {
-    if (running) return;
+    if (running || queue.length > 0) return;
     let h = emptyHeap(kind);
     for (const v of [5, 3, 8, 1, 9, 2]) h = heapInsert(h, v).heap;
     setHeap(h);
@@ -152,12 +241,13 @@ export default function HeapPage() {
 
   const topLabel = kind === "min" ? "Mínimo" : "Máximo";
   const leaves = heapLeaves(heap);
+  const busy = running || queue.length > 0;
 
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader
         title="Montículo binario"
-        description="El valor que manda queda en la raíz: el menor en un min-heap, el mayor en un max-heap. Al insertar, el valor burbujea hacia arriba; al extraer, la raíz se reemplaza y el reemplazo se hunde."
+        description="El valor que manda queda en la raíz: el menor en un min-heap, el mayor en un max-heap. Al insertar, el valor burbujea hacia arriba comparando con su padre; los hijos que no existen se dibujan un instante como nodos nulos. Al extraer, la raíz se reemplaza y el reemplazo se hunde. Un duplicado solo se descubre al llegar a su nodo, así que también se recorre."
       />
 
       <Card className="mb-6">
@@ -178,26 +268,45 @@ export default function HeapPage() {
           ))}
         </div>
 
-        <div className="flex flex-wrap items-end gap-3">
+        <div className="grid gap-4 lg:grid-cols-[auto_auto_1fr]">
           <NumberInput
-            label="Valor"
+            label="Un valor"
             value={value}
             onChange={setValue}
             onEnter={doInsert}
             placeholder="7"
           />
-          <Button onClick={doInsert} disabled={running}>
-            Insertar
-          </Button>
-          <Button
-            onClick={doExtract}
-            disabled={running || heap.data.length === 0}
-            variant="secondary"
-          >
-            Extraer {kind === "min" ? "mínimo" : "máximo"}
-          </Button>
+          <div className="flex items-end gap-3">
+            <Button onClick={doInsert} disabled={busy}>
+              Insertar
+            </Button>
+            <Button
+              onClick={doExtract}
+              disabled={busy || heap.data.length === 0}
+              variant="secondary"
+            >
+              Extraer {kind === "min" ? "mín." : "máx."}
+            </Button>
+          </div>
+          <div className="flex items-end gap-3">
+            <TextInput
+              label="Una lista"
+              value={list}
+              onChange={setList}
+              onEnter={insertList}
+              placeholder="5, 3, 8, 1, 9, 2"
+              className="w-full min-w-64"
+            />
+            <Button onClick={insertList} disabled={busy}>
+              Insertar lista
+            </Button>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-black pt-4">
+          <SpeedControl value={speed} onChange={setSpeed} />
           <div className="mx-1 hidden h-9 w-px bg-black sm:block" />
-          <Button onClick={demo} disabled={running} variant="secondary">
+          <Button onClick={demo} disabled={busy} variant="secondary">
             Ejemplo
           </Button>
           <Button onClick={reset} disabled={running} variant="danger">
@@ -206,12 +315,15 @@ export default function HeapPage() {
         </div>
 
         <div className="mt-4">
-          <StatusBar tone={tone}>{message}</StatusBar>
+          <StatusBar tone={tone}>
+            {message}
+            {queue.length > 0 ? ` · en cola: ${queue.length}` : ""}
+          </StatusBar>
         </div>
       </Card>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_17rem]">
-        <TreeCanvas tree={tree} status={status} />
+        <TreeCanvas tree={tree} status={status} ghosts={ghosts} />
 
         <div className="space-y-6">
           <Card>
@@ -281,7 +393,10 @@ export default function HeapPage() {
                 <Swatch fill="#000000" /> Intercambiando
               </li>
               <li>
-                <Swatch fill="#a3a3a3" /> Comparado ahora
+                <Swatch fill="#a3a3a3" /> Encontrado / comparado
+              </li>
+              <li>
+                <Swatch fill="#ffffff" dashed /> Hijo nulo comprobado
               </li>
             </ul>
           </Card>

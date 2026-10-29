@@ -28,10 +28,16 @@ const STYLE: Record<
   null: { fill: "#ffffff", stroke: "#000000", text: "#000000", w: 3 },
 };
 
-/** Hueco nulo efímero: cuelga del padre indicado. */
-export interface NullHole {
-  parentId: string;
-  side: "left" | "right";
+/**
+ * Nodo efímero "null": se dibuja en una posición dada, colgando de un padre,
+ * mientras se comprueba un hueco, y desaparece cuando el recorrido lo abandona.
+ */
+export interface GhostNode {
+  x: number;
+  y: number;
+  /** Vértice del que cuelga (para la línea discontinua). */
+  from?: { x: number; y: number };
+  label?: string;
 }
 
 interface Props {
@@ -44,11 +50,8 @@ interface Props {
   radius?: number;
   /** Etiqueta opcional bajo cada nodo (por identificador). */
   sublabels?: Record<string, string>;
-  /**
-   * Hueco nulo efímero: se dibuja un nodo "null" colgando del padre indicado
-   * mientras se comprueba, y desaparece cuando el recorrido lo abandona.
-   */
-  nullHole?: NullHole | null;
+  /** Nodos `null` efímeros que se dibujan sólo en el fotograma actual. */
+  ghosts?: GhostNode[];
 }
 
 /** Dibuja un árbol genérico como SVG, en blanco y negro. */
@@ -58,28 +61,24 @@ export default function TreeCanvas({
   edgeStatus = {},
   radius = 24,
   sublabels = {},
-  nullHole = null,
+  ghosts = [],
 }: Props) {
   const byId = new Map(tree.nodes.map((n) => [n.id, n]));
 
-  // Posición del nodo "null" efímero, si procede.
-  const V_GAP = 92;
-  const holeParent = nullHole ? byId.get(nullHole.parentId) : undefined;
-  const holePos =
-    nullHole && holeParent
-      ? {
-          x: holeParent.x + (nullHole.side === "left" ? -46 : 46),
-          y: holeParent.y + V_GAP,
-        }
-      : null;
-
-  // El lienzo debe abarcar el nodo efímero si cuelga por debajo.
-  const minX = holePos ? Math.min(0, holePos.x - radius) : 0;
-  const shift = minX < 0 ? -minX + 10 : 0;
-  const width = tree.width + shift + (holePos ? radius : 0);
-  const height = holePos
-    ? Math.max(tree.height, holePos.y + radius + 20)
-    : tree.height;
+  // El lienzo debe abarcar los nodos efímeros si sobresalen por los bordes.
+  const xs = [
+    ...tree.nodes.map((n) => n.x),
+    ...ghosts.map((g) => g.x + radius),
+  ];
+  const ys = [...tree.nodes.map((n) => n.y), ...ghosts.map((g) => g.y + radius)];
+  const minX = Math.min(0, ...xs.map((x) => x - radius * 2));
+  const shift = minX < 0 ? -minX : 0;
+  const width = Math.max(tree.width, ...xs.map((x) => x + radius + shift), 80);
+  const height = Math.max(
+    tree.height,
+    ...ys.map((y) => y + radius + 10),
+    80,
+  );
 
   return (
     <div className="overflow-auto border-2 border-black bg-white p-4">
@@ -113,21 +112,23 @@ export default function TreeCanvas({
             );
           })}
 
-          {/* Nodo efímero "null": aparece al comprobar un hueco y desaparece. */}
-          {holePos && nullHole ? (
-            <g className="animate-fade-in">
-              <line
-                x1={holeParent!.x}
-                y1={holeParent!.y}
-                x2={holePos.x}
-                y2={holePos.y}
-                stroke="#000000"
-                strokeWidth={1.5}
-                strokeDasharray="4 3"
-              />
+          {/* Nodos efímeros "null": aparecen al comprobar un hueco. */}
+          {ghosts.map((g, idx) => (
+            <g key={`ghost-${idx}`} className="animate-fade-in">
+              {g.from ? (
+                <line
+                  x1={g.from.x}
+                  y1={g.from.y}
+                  x2={g.x}
+                  y2={g.y}
+                  stroke="#000000"
+                  strokeWidth={1.5}
+                  strokeDasharray="4 3"
+                />
+              ) : null}
               <circle
-                cx={holePos.x}
-                cy={holePos.y}
+                cx={g.x}
+                cy={g.y}
                 r={radius * 0.72}
                 fill="#ffffff"
                 stroke="#000000"
@@ -135,18 +136,18 @@ export default function TreeCanvas({
                 strokeDasharray="4 3"
               />
               <text
-                x={holePos.x}
-                y={holePos.y + 1}
+                x={g.x}
+                y={g.y + 1}
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fontSize={radius * 0.5}
                 fontWeight={700}
                 fill="#000000"
               >
-                null
+                {g.label ?? "null"}
               </text>
             </g>
-          ) : null}
+          ))}
 
           {tree.nodes.map((n) => {
             const s = STYLE[status[n.id] ?? "default"];
@@ -191,10 +192,10 @@ export default function TreeCanvas({
             );
           })}
 
-          {tree.nodes.length === 0 && !holePos ? (
+          {tree.nodes.length === 0 && ghosts.length === 0 ? (
             <text
-              x={tree.width / 2}
-              y={tree.height / 2}
+              x={width / 2}
+              y={height / 2}
               textAnchor="middle"
               fontSize={14}
               fill="#000000"
