@@ -95,6 +95,7 @@ export default function GraphPage() {
   const [weight, setWeight] = useState("");
   const [newNode, setNewNode] = useState("");
   const [startNode, setStartNode] = useState("");
+  const [endNode, setEndNode] = useState("");
   const [speed, setSpeed] = useState<Speed>("normal");
   const [frame, setFrame] = useState<Frame>(EMPTY_FRAME);
   const [anim, setAnim] = useState<Frame[] | null>(null);
@@ -164,10 +165,15 @@ export default function GraphPage() {
       say(`La arista ${a}–${b} ya existe.`, "error");
       return;
     }
-    const w = weight.trim() === "" ? 1 : Number(weight);
-    if (!Number.isFinite(w)) {
-      say("El peso debe ser un número.", "error");
-      return;
+    // El peso solo importa (y se valida) en un grafo ponderado; en uno sin
+    // peso cualquier resto del campo no debe bloquear la arista.
+    let w = 1;
+    if (graph.weighted) {
+      w = weight.trim() === "" ? 1 : Number(weight);
+      if (!Number.isFinite(w)) {
+        say("El peso debe ser un número.", "error");
+        return;
+      }
     }
     setGraph(addEdge(graph, a, b, w));
     setFrom("");
@@ -320,13 +326,13 @@ export default function GraphPage() {
   const doShortestPath = () => {
     if (running) return;
     const start = startNode.trim() || graph.nodes[0];
-    const target = to.trim();
+    const target = endNode.trim();
     if (!start || !graph.nodes.includes(start)) {
       say("Elige un vértice de inicio.", "error");
       return;
     }
     if (!target || !graph.nodes.includes(target)) {
-      say("Escribe el destino en el campo «destino».", "error");
+      say(`Escribe el vértice final en el campo «Fin» (${graph.nodes.join(", ") || "el grafo está vacío"}).`, "error");
       return;
     }
     const { dist, prev } = dijkstra(graph, start);
@@ -541,36 +547,52 @@ export default function GraphPage() {
         </div>
 
         {/* Recorridos y algoritmos */}
-        <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-black pt-4">
-          <TextInput
-            label="Inicio"
-            value={startNode}
-            onChange={setStartNode}
-            placeholder={graph.nodes[0] ?? "A"}
-            className="w-24"
-          />
-          <SpeedControl value={speed} onChange={setSpeed} />
-          <Button onClick={() => doWalk("bfs")} disabled={running} variant="secondary">
-            BFS
-          </Button>
-          <Button onClick={() => doWalk("dfs")} disabled={running} variant="secondary">
-            DFS
-          </Button>
-          <Button onClick={doDijkstra} disabled={running} variant="secondary">
-            Dijkstra
-          </Button>
-          <Button onClick={doShortestPath} disabled={running} variant="secondary">
-            Camino más corto
-          </Button>
-          <Button onClick={doTopological} disabled={running} variant="secondary">
-            Topológico
-          </Button>
-          <Button onClick={doComponents} disabled={running} variant="secondary">
-            Componentes
-          </Button>
-          <Button onClick={doBipartite} disabled={running} variant="secondary">
-            Bipartito
-          </Button>
+        <div className="mt-4 border-t border-black pt-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <TextInput
+              label="Inicio"
+              value={startNode}
+              onChange={setStartNode}
+              placeholder={graph.nodes[0] ?? "A"}
+              className="w-24"
+            />
+            <TextInput
+              label="Fin"
+              value={endNode}
+              onChange={setEndNode}
+              onEnter={doShortestPath}
+              placeholder={graph.nodes[graph.nodes.length - 1] ?? "F"}
+              className="w-24"
+            />
+            <SpeedControl value={speed} onChange={setSpeed} />
+            <Button
+              onClick={doShortestPath}
+              disabled={running}
+              variant="secondary"
+            >
+              Camino más corto
+            </Button>
+          </div>
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            <Button onClick={() => doWalk("bfs")} disabled={running} variant="secondary">
+              BFS
+            </Button>
+            <Button onClick={() => doWalk("dfs")} disabled={running} variant="secondary">
+              DFS
+            </Button>
+            <Button onClick={doDijkstra} disabled={running} variant="secondary">
+              Dijkstra
+            </Button>
+            <Button onClick={doTopological} disabled={running} variant="secondary">
+              Topológico
+            </Button>
+            <Button onClick={doComponents} disabled={running} variant="secondary">
+              Componentes
+            </Button>
+            <Button onClick={doBipartite} disabled={running} variant="secondary">
+              Bipartito
+            </Button>
+          </div>
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
