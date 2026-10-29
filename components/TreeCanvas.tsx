@@ -23,7 +23,7 @@ const STYLE: Record<
   current: { fill: "#000000", stroke: "#000000", text: "#ffffff", w: 3 },
   found: { fill: "#a3a3a3", stroke: "#000000", text: "#000000", w: 3 },
   new: { fill: "#f5f5f5", stroke: "#000000", text: "#000000", w: 3 },
-  missing: { fill: "#ffffff", stroke: "#000000", text: "#000000", w: 2 },
+  missing: { fill: "#525252", stroke: "#000000", text: "#ffffff", w: 3 },
   output: { fill: "#000000", stroke: "#000000", text: "#ffffff", w: 2.5 },
   null: { fill: "#ffffff", stroke: "#000000", text: "#000000", w: 3 },
 };

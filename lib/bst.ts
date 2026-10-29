@@ -190,6 +190,209 @@ export function search(root: BstNode | null, value: number): SearchResult {
 /** Los tres recorridos en profundidad. */
 export type TraversalKind = "inorder" | "preorder" | "postorder";
 
+/** Cómo se reemplaza un nodo al eliminarlo. */
+export type DeleteCase =
+  | "missing"
+  | "leaf"
+  | "one-child"
+  | "two-children";
+
+/** Un paso del recorrido de eliminación, para animar cómo se reemplaza. */
+export interface DeleteStep {
+  /** Valores de los nodos visitados hasta este punto, en orden. */
+  visited: number[];
+  /** Nodo que se está comparando o tratando ahora (null al buscar el sucesor). */
+  at: number | null;
+  /**
+   * Nodo que va a reemplazar al eliminado (el sucesor inorden), si lo hay.
+   */
+  replacement: number | null;
+  action: "compare" | "found" | "leaf" | "one-child" | "successor" | "replace" | "remove" | "missing";
+  /** Explicación legible del paso. */
+  message: string;
+}
+
+/** Resultado de eliminar un valor. */
+export interface DeleteResult {
+  root: BstNode | null;
+  steps: DeleteStep[];
+  removed: boolean;
+  /** Caso de reemplazo que se aplicó. */
+  deleteCase: DeleteCase;
+}
+
+/** Extrae el menor valor del subárbol (el sucesor inorden). */
+function takeMin(n: BstNode): { node: BstNode | null; min: BstNode } {
+  let parent: BstNode | null = null;
+  let current = n;
+  while (current.left !== null) {
+    parent = current;
+    current = current.left;
+  }
+  const min = current;
+  // El menor no tiene hijo izquierdo; su hijo derecho sube a su lugar.
+  if (parent === null) {
+    return { node: min.right, min };
+  }
+  parent.left = min.right;
+  return { node: n, min };
+}
+
+/**
+ * Elimina un valor devolviendo un árbol nuevo y la traza que explica cómo se
+ * reemplaza: sin hijos, con un solo hijo, o con dos (por el sucesor inorden).
+ */
+export function remove(root: BstNode | null, value: number): DeleteResult {
+  const steps: DeleteStep[] = [];
+  const visited: number[] = [];
+
+  if (root === null) {
+    steps.push({
+      visited: [],
+      at: null,
+      replacement: null,
+      action: "missing",
+      message: `El árbol está vacío: no hay nada que eliminar.`,
+    });
+    return { root, steps, removed: false, deleteCase: "missing" };
+  }
+
+  // Descenso hasta el nodo, registrando el camino y las comprobaciones.
+  let current: BstNode | null = root;
+
+  while (current !== null && current.value !== value) {
+    visited.push(current.value);
+    if (value < current.value) {
+      steps.push({
+        visited: [...visited],
+        at: current.value,
+        replacement: null,
+        action: "compare",
+        message: `${value} < ${current.value}: bajamos por la izquierda.`,
+      });
+      current = current.left;
+    } else {
+      steps.push({
+        visited: [...visited],
+        at: current.value,
+        replacement: null,
+        action: "compare",
+        message: `${value} > ${current.value}: bajamos por la derecha.`,
+      });
+      current = current.right;
+    }
+  }
+
+  if (current === null) {
+    steps.push({
+      visited: [...visited],
+      at: null,
+      replacement: null,
+      action: "missing",
+      message: `Se alcanzó un null: ${value} no está en el árbol.`,
+    });
+    return { root, steps, removed: false, deleteCase: "missing" };
+  }
+
+  visited.push(current.value);
+  const target = current;
+
+  if (!target.left && !target.right) {
+    steps.push({
+      visited: [...visited],
+      at: target.value,
+      replacement: null,
+      action: "leaf",
+      message: `${value} es una hoja: no tiene hijos, se elimina y su hueco queda null.`,
+    });
+    return {
+      root: cloneWithout(root, value),
+      steps,
+      removed: true,
+      deleteCase: "leaf",
+    };
+  }
+
+  if (!target.left || !target.right) {
+    const child = (target.left ?? target.right)!;
+    const side = target.left ? "izquierdo" : "derecho";
+    steps.push({
+      visited: [...visited],
+      at: target.value,
+      replacement: child.value,
+      action: "one-child",
+      message: `${value} tiene un solo hijo (${side} = ${child.value}): ese hijo sube y ocupa su lugar.`,
+    });
+    return {
+      root: cloneWithout(root, value),
+      steps,
+      removed: true,
+      deleteCase: "one-child",
+    };
+  }
+
+  // Dos hijos: se reemplaza por el sucesor inorden (el menor de la derecha).
+  steps.push({
+    visited: [...visited],
+    at: target.value,
+    replacement: null,
+    action: "found",
+    message: `${value} tiene dos hijos: no se puede quitar sin más.`,
+  });
+  let succ: BstNode = target.right;
+  const succVisited = [...visited];
+  while (succ.left !== null) {
+    succVisited.push(succ.value);
+    steps.push({
+      visited: [...succVisited],
+      at: succ.value,
+      replacement: null,
+      action: "successor",
+      message: `Buscamos el menor del subárbol derecho: ${succ.value} tiene hijo izquierdo, bajamos.`,
+    });
+    succ = succ.left;
+  }
+  succVisited.push(succ.value);
+  steps.push({
+    visited: [...succVisited],
+    at: succ.value,
+    replacement: succ.value,
+    action: "successor",
+    message: `El sucesor inorden (menor de la derecha) es ${succ.value}: es el siguiente valor en orden.`,
+  });
+  steps.push({
+    visited: [...visited],
+    at: target.value,
+    replacement: succ.value,
+    action: "replace",
+    message: `${succ.value} reemplaza a ${value} en su posición, y ${value} desaparece del árbol.`,
+  });
+
+  return {
+    root: cloneWithout(root, value),
+    steps,
+    removed: true,
+    deleteCase: "two-children",
+  };
+}
+
+/** Devuelve una copia del árbol sin el nodo con `value`, preservando el orden. */
+function cloneWithout(n: BstNode | null, value: number): BstNode | null {
+  if (n === null) return null;
+  if (value < n.value) {
+    return { value: n.value, left: cloneWithout(n.left, value), right: n.right };
+  }
+  if (value > n.value) {
+    return { value: n.value, left: n.left, right: cloneWithout(n.right, value) };
+  }
+  // Encontrado.
+  if (!n.left) return n.right;
+  if (!n.right) return n.left;
+  // Dos hijos: el menor del derecho pasa a este nodo; se extrae de la derecha.
+  const taken = takeMin(n.right);
+  return { value: taken.min.value, left: n.left, right: taken.node };
+}
+
 /**
  * Un paso de un recorrido. El recorrido no empieza en el primer nodo que se
  * imprime: baja desde la raíz llamando a la izquierda, comprobando en cada

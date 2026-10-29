@@ -31,12 +31,14 @@ import {
   heapInsert,
   heapLayout,
   heapLeaves,
+  heapRemove,
 } from "@/lib/heap";
 
 type PendingCommit =
   | { kind: "insert"; heap: Heap }
   | { kind: "duplicate"; value: number }
   | { kind: "extract"; heap: Heap; top: number | null }
+  | { kind: "remove"; heap: Heap; value: number; removed: boolean }
   | null;
 
 /** Convierte "5, 3, 8" en [5, 3, 8]. Ignora lo que no sea entero. */
@@ -92,6 +94,14 @@ export default function HeapPage() {
             : `Extraído ${commit.top} desde la raíz.`,
         );
         setTone(commit.top === null ? "error" : "success");
+      } else if (commit?.kind === "remove") {
+        setHeap(commit.heap);
+        setMessage(
+          commit.removed
+            ? `Eliminado ${commit.value}: lo reemplazó el último elemento, que se reacomodó.`
+            : `${commit.value} no está en el montículo.`,
+        );
+        setTone(commit.removed ? "success" : "error");
       }
       setCommit(null);
       return;
@@ -135,7 +145,9 @@ export default function HeapPage() {
         st[String(i)] =
           frame.action === "swap"
             ? "current"
-            : frame.action === "duplicate"
+            : frame.action === "duplicate" ||
+                frame.action === "found" ||
+                frame.action === "missing"
               ? "found"
               : "visited";
     }
@@ -222,6 +234,26 @@ export default function HeapPage() {
     setCommit({ kind: "extract", heap: next, top });
   };
 
+  const doRemove = () => {
+    if (running || queue.length > 0) return;
+    const n = parseOne();
+    if (n === null) {
+      setMessage("Escribe un número entero para eliminar.");
+      setTone("error");
+      return;
+    }
+    if (heap.data.length === 0) {
+      setMessage("El montículo está vacío: no hay nada que eliminar.");
+      setTone("error");
+      return;
+    }
+    const { heap: next, steps: frames, removed } = heapRemove(heap, n);
+    setValue("");
+    setSteps(frames);
+    setIdx(0);
+    setCommit({ kind: "remove", heap: next, value: n, removed });
+  };
+
   const reset = () => {
     if (running) return;
     setHeap(emptyHeap(kind));
@@ -286,6 +318,13 @@ export default function HeapPage() {
               variant="secondary"
             >
               Extraer {kind === "min" ? "mín." : "máx."}
+            </Button>
+            <Button
+              onClick={doRemove}
+              disabled={busy || heap.data.length === 0}
+              variant="danger"
+            >
+              Eliminar
             </Button>
           </div>
           <div className="flex items-end gap-3">
@@ -397,6 +436,9 @@ export default function HeapPage() {
               </li>
               <li>
                 <Swatch fill="#ffffff" dashed /> Hijo nulo comprobado
+              </li>
+              <li>
+                <Swatch fill="#a3a3a3" /> Nodo localizado / a eliminar
               </li>
             </ul>
           </Card>

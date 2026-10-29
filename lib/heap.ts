@@ -30,7 +30,14 @@ export interface HeapStep {
   hot: number[];
   /** Hijos inexistentes que se comprueban en este paso. */
   holes: HeapHole[];
-  action: "push" | "compare" | "swap" | "done" | "duplicate";
+  action:
+    | "push"
+    | "compare"
+    | "swap"
+    | "done"
+    | "duplicate"
+    | "found"
+    | "missing";
   message: string;
 }
 
@@ -216,8 +223,22 @@ export function heapExtract(heap: Heap): {
     action: "push",
     message: `El último (${last}) ocupa la raíz y ahora se hunde.`,
   });
+  siftDown(data, 0, kind, steps);
 
-  let i = 0;
+  return { heap: { data, kind }, steps, top };
+}
+
+/**
+ * Hunde el valor del índice `start` mientras supere al mejor de sus hijos.
+ * Comparte con `heapRemove` el burbujeo hacia abajo; registra cada paso.
+ */
+function siftDown(
+  data: number[],
+  start: number,
+  kind: HeapKind,
+  steps: HeapStep[],
+): void {
+  let i = start;
   for (;;) {
     const l = leftIndex(i);
     const r = rightIndex(i);
@@ -259,8 +280,136 @@ export function heapExtract(heap: Heap): {
     });
     i = best;
   }
+}
 
-  return { heap: { data, kind }, steps, top };
+/** Sube el valor del índice `start` mientras supere a su padre. */
+function siftUp(
+  data: number[],
+  start: number,
+  kind: HeapKind,
+  steps: HeapStep[],
+): void {
+  let i = start;
+  while (i > 0) {
+    const p = parentIndex(i);
+    steps.push({
+      snapshot: [...data],
+      route: route(i),
+      hot: [i, p],
+      holes: missingChildren(data, [i]),
+      action: "compare",
+      message: `Comparamos ${data[i]} con su padre ${data[p]} (índice ${p}).`,
+    });
+    if (!outranks(data[i], data[p], kind)) {
+      const rel = kind === "min" ? "≥" : "≤";
+      steps.push({
+        snapshot: [...data],
+        route: route(i),
+        hot: [i, p],
+        holes: missingChildren(data, [i]),
+        action: "done",
+        message: `${data[i]} ${rel} ${data[p]}: se cumple la propiedad de ${kind}-heap, terminamos.`,
+      });
+      return;
+    }
+    [data[p], data[i]] = [data[i], data[p]];
+    steps.push({
+      snapshot: [...data],
+      route: route(p),
+      hot: [i, p],
+      holes: missingChildren(data, [i]),
+      action: "swap",
+      message: `El valor sube: intercambia con ${data[i]} (índice ${i}).`,
+    });
+    i = p;
+  }
+  steps.push({
+    snapshot: [...data],
+    route: [0],
+    hot: [0],
+    holes: missingChildren(data, [0]),
+    action: "done",
+    message: `${data[0]} llegó a la raíz: el montículo se recompuso.`,
+  });
+}
+
+/**
+ * Elimina el valor `value` del montículo, donde esté. Se retira y su hueco lo
+ * ocupa el último elemento, que luego sube o baja hasta reubicarse. Devuelve
+ * la traza para verlo.
+ */
+export function heapRemove(heap: Heap, value: number): {
+  heap: Heap;
+  steps: HeapStep[];
+  removed: boolean;
+} {
+  const { kind } = heap;
+  const data = [...heap.data];
+  const steps: HeapStep[] = [];
+
+  const at = data.indexOf(value);
+  if (at === -1) {
+    steps.push({
+      snapshot: [...data],
+      route: [],
+      hot: [],
+      holes: [],
+      action: "missing",
+      message: `${value} no está en el montículo: no hay nada que eliminar.`,
+    });
+    return { heap, steps, removed: false };
+  }
+
+  if (at === 0) {
+    // Es la raíz: equivale a extraer.
+    const ex = heapExtract(heap);
+    return { heap: ex.heap, steps: ex.steps, removed: true };
+  }
+
+  const lastIdx = data.length - 1;
+  steps.push({
+    snapshot: [...data],
+    route: route(at),
+    hot: [at],
+    holes: missingChildren(data, [at]),
+    action: "found",
+    message: `${value} está en el índice ${at}: lo retiramos.`,
+  });
+
+  if (at === lastIdx) {
+    data.pop();
+    steps.push({
+      snapshot: [...data],
+      route: [],
+      hot: [],
+      holes: [] as HeapHole[],
+      action: "done",
+      message: `${value} era el último elemento: al quitarlo el arreglo encoge y la propiedad se mantiene.`,
+    });
+    return { heap: { data, kind }, steps, removed: true };
+  }
+
+  const last = data[lastIdx];
+  data[at] = last;
+  data.pop();
+  steps.push({
+    snapshot: [...data],
+    route: route(at),
+    hot: [at],
+    holes: missingChildren(data, [at]),
+    action: "push",
+    message: `El último (${last}) ocupa el hueco del índice ${at} y se reacomoda.`,
+  });
+
+  // Se reacomoda subiendo o bajando según convenga.
+  const parent = parentIndex(at);
+  if (parent >= 0 && outranks(data[at], data[parent], kind)) {
+    siftUp(data, at, kind, steps);
+  } else {
+    siftDown(data, at, kind, steps);
+  }
+
+  return { heap: { data, kind }, steps, removed: true };
 }
 
 /** Altura del montículo (aristas desde la raíz; vacío = -1). */

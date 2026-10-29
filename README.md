@@ -16,6 +16,9 @@ tiene su propia página, seleccionable desde la barra lateral.
     de uno en uno.
   - **Buscar** un nodo marcando el camino recorrido hasta encontrarlo (o hasta
     el hueco nulo donde se agota).
+  - **Eliminar** un nodo mostrando cómo se reemplaza: sin hijos (su hueco queda
+    nulo), con un solo hijo (ese hijo sube a su lugar) o con dos (lo reemplaza
+    el sucesor inorden, el menor del subárbol derecho).
   - Recorridos **inorden**, **preorden** y **postorden**: la animación baja
     desde la raíz llamando a la izquierda y comprobando cada hijo antes de
     imprimir, de modo que se ve por qué el primer valor impreso no es la raíz.
@@ -23,7 +26,13 @@ tiene su propia página, seleccionable desde la barra lateral.
   - El árbol se dibuja como SVG, posicionando los nodos por índice inorden para
     que ningún subárbol se solape.
   - Control de **velocidad** de la animación (lento, normal, rápido).
-- **Montículo** (`/heap`): **min-heap** y **max-heap** (conmutables), con inserción (burbujeo hacia arriba), extracción de la raíz, arreglo subyacente, altura, hojas y orden por extracción. Comparte con el árbol la entrada por listas, el control de velocidad, el recorrido de un duplicado hasta su nodo y los hijos nulos dibujados un instante al comprobarlos.
+- **Montículo** (`/heap`): **min-heap** y **max-heap** (conmutables), con
+  inserción (burbujeo hacia arriba), **extracción** de la raíz y **eliminación
+  de un valor cualquiera** (su hueco lo ocupa el último elemento, que sube o
+  baja hasta reubicarse), arreglo subyacente, altura, hojas y orden por
+  extracción. Comparte con el árbol la entrada por listas, el control de
+  velocidad, el recorrido de un duplicado hasta su nodo y los hijos nulos
+  dibujados un instante al comprobarlos.
 
 La interfaz es monocroma: estados por relleno y grosor, sin color ni
 gradientes. Las animaciones usan transiciones cortas y se desactivan solas con
@@ -55,5 +64,7 @@ lib/            lógica pura: árbol binario de búsqueda, montículo y layout
 
 La lógica de las estructuras vive en `lib/` sin dependencias de React, de modo
 que es fácil de probar y reutilizar. `traversalTrace` produce el recorrido paso
-a paso (descenso, comprobaciones de hijos nulos y momento de impresión) y
-`insert` devuelve la traza del descenso junto al árbol nuevo.
+a paso (descenso, comprobaciones de hijos nulos y momento de impresión),
+`insert` devuelve la traza del descenso junto al árbol nuevo y `remove`
+(igual que `heapRemove` en el montículo) describe cómo se reemplaza el nodo
+eliminado.

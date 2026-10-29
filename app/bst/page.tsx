@@ -21,6 +21,7 @@ import {
 } from "@/components/ui";
 import {
   type BstNode,
+  type DeleteCase,
   type TraversalKind,
   countLeaves,
   countNodes,
@@ -30,6 +31,7 @@ import {
   leafValues,
   postorder,
   preorder,
+  remove,
   search,
   traversalTrace,
 } from "@/lib/bst";
@@ -61,6 +63,7 @@ type PendingCommit =
   | { kind: "insert"; root: BstNode; value: number }
   | { kind: "duplicate"; value: number }
   | { kind: "search"; value: number; found: boolean }
+  | { kind: "delete"; root: BstNode | null; value: number; deleteCase: DeleteCase }
   | null;
 
 /** Convierte "800, 1200 1500" en [800, 1200, 1500]. Ignora lo que no sea entero. */
@@ -156,6 +159,18 @@ export default function BstPage() {
         setMessage(`${commit.value} no está en el árbol.`);
         setTone("error");
       }
+    } else if (commit?.kind === "delete") {
+      setRoot(commit.root);
+      setStatus({});
+      const how = {
+        leaf: "era una hoja: su hueco quedó nulo.",
+        "one-child": "tenía un hijo: ese hijo subió a su lugar.",
+        "two-children":
+          "tenía dos hijos: lo reemplazó el menor de su subárbol derecho (el sucesor inorden).",
+        missing: "no estaba en el árbol.",
+      }[commit.deleteCase];
+      setMessage(`Eliminado ${commit.value}: ${how}`);
+      setTone(commit.deleteCase === "missing" ? "error" : "success");
     }
     setCommit(null);
     setEdgeStatus({});
@@ -207,6 +222,64 @@ export default function BstPage() {
     setOutput("");
     setOutputIds([]);
     setEdgeStatus({});
+  };
+
+  const doDelete = () => {
+    if (running || queue.length > 0) return;
+    const n = parseOne();
+    if (n === null) {
+      setMessage("Escribe un número entero para eliminar.");
+      setTone("error");
+      return;
+    }
+    if (root === null) {
+      setMessage("El árbol está vacío: no hay nada que eliminar.");
+      setTone("error");
+      return;
+    }
+    const res = remove(root, n);
+    resetVisual();
+    setValue("");
+    setStatus({});
+    // La animación recorre el descenso; el nodo a eliminar se marca según el
+    // caso, y si hay dos hijos se sigue hasta el sucesor inorden.
+    const frames: AnimStep[] = res.steps.map((st) => {
+      const path = st.visited
+        .map((v) => idOf(root, v))
+        .filter((id): id is string => id !== null);
+      const isTarget = st.action !== "compare" && st.action !== "missing";
+      const currentStatus: NodeStatus =
+        st.action === "replace" || st.action === "successor"
+          ? "found"
+          : isTarget
+            ? "missing"
+            : "current";
+      return {
+        pathIds: path,
+        currentId: st.at === null ? null : idOf(root, st.at),
+        currentStatus,
+        message: st.message,
+      };
+    });
+    // Un último fotograma que muestra el hueco que deja el nodo eliminado.
+    if (res.removed) {
+      if (res.deleteCase === "two-children") {
+        frames.push({
+          pathIds: [],
+          currentId: null,
+          currentStatus: "missing",
+          message: `El valor se eliminó: la rama se reacomodó para conservar el orden.`,
+        });
+      }
+    }
+    setAnim(frames);
+    setStepIdx(0);
+    setCommit({
+      kind: "delete",
+      root: res.root,
+      value: n,
+      deleteCase: res.deleteCase,
+    });
   };
 
   const insertOne = () => {
@@ -369,6 +442,9 @@ export default function BstPage() {
             <Button onClick={doSearch} disabled={busy} variant="secondary">
               Buscar
             </Button>
+            <Button onClick={doDelete} disabled={busy} variant="danger">
+              Eliminar
+            </Button>
           </div>
           <div className="flex items-end gap-3">
             <TextInput
@@ -478,6 +554,9 @@ export default function BstPage() {
               </li>
               <li>
                 <Swatch fill="#ffffff" dashed /> Hueco nulo comprobado
+              </li>
+              <li>
+                <Swatch fill="#525252" /> Nodo que se elimina
               </li>
             </ul>
           </Card>
