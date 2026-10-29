@@ -26,6 +26,17 @@ tiene su propia página, seleccionable desde la barra lateral.
   - El árbol se dibuja como SVG, posicionando los nodos por índice inorden para
     que ningún subárbol se solape.
   - Control de **velocidad** de la animación (lento, normal, rápido).
+- **Grafos** (`/graph`): dirigido o no dirigido, ponderado o no, con bucles.
+  - **Operaciones**: añadir y quitar vértices y aristas (inmutables).
+  - **Recorridos** BFS y DFS animados, con la cola o la pila a la vista.
+  - **Algoritmos**: Dijkstra con relajación paso a paso, camino más corto
+    entre dos vértices, orden topológico, componentes conexas y comprobación
+    de bipartito.
+  - **Métricas**: orden, tamaño, densidad, grados, suma de grados (2·|E|),
+    peso total, conexo, conexión fuerte, componentes, ciclos, árbol, simple,
+    completo, regular y orden topológico.
+  - **Matriz y lista de adyacencia** en tablas, y dibujo con flechas, pesos y
+    bucles sobre una disposición de fuerzas determinista.
 - **Montículo** (`/heap`): **min-heap** y **max-heap** (conmutables), con
   inserción (burbujeo hacia arriba), **extracción** de la raíz y **eliminación
   de un valor cualquiera** (su hueco lo ocupa el último elemento, que sube o
@@ -57,14 +68,24 @@ build) y `npm run lint` (ESLint).
 ## Estructura
 
 ```
-app/            páginas (App Router): /, /bst, /heap y el layout con sidebar
-components/     ui (tarjetas, botones), Sidebar y TreeCanvas (SVG)
-lib/            lógica pura: árbol binario de búsqueda, montículo y layout
+app/            páginas (App Router): /, /bst, /heap, /graph y el layout
+components/     ui (tarjetas, botones), Sidebar, TreeCanvas y GraphCanvas (SVG)
+lib/            lógica pura: árbol binario, montículo, grafo y sus layouts
+tests/          pruebas de la lógica con el runner de Node
 ```
 
 La lógica de las estructuras vive en `lib/` sin dependencias de React, de modo
 que es fácil de probar y reutilizar. `traversalTrace` produce el recorrido paso
 a paso (descenso, comprobaciones de hijos nulos y momento de impresión),
-`insert` devuelve la traza del descenso junto al árbol nuevo y `remove`
-(igual que `heapRemove` en el montículo) describe cómo se reemplaza el nodo
-eliminado.
+`insert` devuelve la traza del descenso junto al árbol nuevo, `remove` (igual
+que `heapRemove`) describe cómo se reemplaza el nodo eliminado, y `walk`,
+`dijkstra` y el resto de `graph.ts` devuelven su traza para animarlas.
+
+### Pruebas
+
+```bash
+npm test     # node --test sobre tests/*.test.ts
+```
+
+Cubren las operaciones y las métricas del grafo (grados, densidad, ciclos,
+bipartito, topológico, Dijkstra, disposición determinista).

@@ -42,6 +42,27 @@ function IconTree() {
   );
 }
 
+function IconGraph() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="square"
+      className="h-4 w-4"
+      aria-hidden
+    >
+      <circle cx="5" cy="6" r="2.4" />
+      <circle cx="19" cy="6" r="2.4" />
+      <circle cx="12" cy="18" r="2.4" />
+      <path d="M7.2 6h9.6" />
+      <path d="M6.6 8 10.8 15.8" />
+      <path d="M17.4 8 13.2 15.8" />
+    </svg>
+  );
+}
+
 function IconHeap() {
   return (
     <svg
@@ -64,6 +85,7 @@ const LINKS = [
   { href: "/", label: "Inicio", Icon: IconHome },
   { href: "/bst", label: "Árbol", Icon: IconTree },
   { href: "/heap", label: "Montículo", Icon: IconHeap },
+  { href: "/graph", label: "Grafos", Icon: IconGraph },
 ];
 
 /** Barra lateral monocroma con las páginas de la aplicación. */
