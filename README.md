@@ -7,24 +7,33 @@ tiene su propia página, seleccionable desde la barra lateral.
 
 - **Inicio** (`/`): índice con accesos a las estructuras.
 - **Árbol binario de búsqueda** (`/bst`):
-  - Insertar un valor recorriendo el árbol: se resalta el camino de comparación
-    hasta llegar a un hueco `null`, explicando cada decisión (izquierda/derecha).
-  - Buscar un nodo marcando el camino recorrido hasta encontrarlo.
-  - Recorridos **inorden**, **preorden** y **postorden**, animando el orden.
+  - **Insertar** un valor recorriendo el árbol: se resalta el camino de
+    comparación hasta llegar a un hueco nulo, que se dibuja como un nodo
+    efímero `null` un instante y desaparece para dar a entender que se visitó.
+  - Un **duplicado** solo se descubre al llegar a su nodo, así que también se
+    recorre antes de rechazarlo.
+  - Se admiten valores sueltos o una **lista** (`800, 1200, 1500, …`) que entra
+    de uno en uno.
+  - **Buscar** un nodo marcando el camino recorrido hasta encontrarlo (o hasta
+    el hueco nulo donde se agota).
+  - Recorridos **inorden**, **preorden** y **postorden**: la animación baja
+    desde la raíz llamando a la izquierda y comprobando cada hijo antes de
+    imprimir, de modo que se ve por qué el primer valor impreso no es la raíz.
   - Métricas de **altura**, **hojas** y número de nodos.
   - El árbol se dibuja como SVG, posicionando los nodos por índice inorden para
     que ningún subárbol se solape.
+  - Control de **velocidad** de la animación (lento, normal, rápido).
 - **Montículo** (`/heap`): **min-heap** y **max-heap** (conmutables), con
   inserción (burbujeo hacia arriba), extracción de la raíz, arreglo subyacente,
   altura, hojas y orden por extracción.
 
-Las animaciones usan transiciones de color y alturas con fundido suave
-(`fade-in`), y se desactivan solas con `prefers-reduced-motion`.
+La interfaz es monocroma: estados por relleno y grosor, sin color ni
+gradientes. Las animaciones usan transiciones cortas y se desactivan solas con
+`prefers-reduced-motion`.
 
 ## Desarrollo
 
-Requiere Node.js 20 o superior. Node está instalado en `~/.local/node` y su
-`bin` está en el `PATH` de los rc del shell.
+Requiere Node.js 20 o superior.
 
 ```bash
 npm install
@@ -47,4 +56,6 @@ lib/            lógica pura: árbol binario de búsqueda, montículo y layout
 ```
 
 La lógica de las estructuras vive en `lib/` sin dependencias de React, de modo
-que es fácil de probar y reutilizar.
+que es fácil de probar y reutilizar. `traversalTrace` produce el recorrido paso
+a paso (descenso, comprobaciones de hijos nulos y momento de impresión) y
+`insert` devuelve la traza del descenso junto al árbol nuevo.
