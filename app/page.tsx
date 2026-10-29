@@ -55,7 +55,7 @@ export default function Home() {
       <div className="grid gap-0 sm:grid-cols-2">
         {CARDS.map((c) => (
           <Link key={c.href} href={c.href} className="group block">
-            <Card className="h-full border-r-0 transition-colors duration-150 group-hover:bg-black group-hover:text-white sm:last:border-r-2">
+            <Card className="h-full transition-colors duration-150 group-hover:bg-black group-hover:text-white">
               <span className="font-mono text-xs text-black/40 group-hover:text-white/50">
                 {c.num}
               </span>

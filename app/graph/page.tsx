@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ScrollArea } from "@/components/ScrollArea";
 import GraphCanvas, {
   type EdgeStatus,
   type VertexStatus,
@@ -597,7 +598,7 @@ export default function GraphPage() {
 
         <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
           <StatusBar tone={shown.tone}>{shown.message || "…"}</StatusBar>
-          <div className="flex min-w-72 flex-col justify-center border-2 border-black bg-white px-4 py-2">
+          <div className="flex flex-col justify-center border-2 border-black bg-white px-4 py-2 md:min-w-72">
             <span className="text-[10px] font-bold tracking-[0.2em] text-black/60 uppercase">
               Resultado
             </span>
@@ -684,7 +685,7 @@ export default function GraphPage() {
           {order === 0 ? (
             <p className="mt-3 text-xs text-black/60">Sin vértices.</p>
           ) : (
-            <div className="mt-3 overflow-auto">
+            <ScrollArea className="mt-3">
               <table className="border-collapse font-mono text-xs">
                 <thead>
                   <tr>
@@ -716,7 +717,7 @@ export default function GraphPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollArea>
           )}
         </Card>
 

@@ -308,7 +308,7 @@ export default function HeapPage() {
             onEnter={doInsert}
             placeholder="7"
           />
-          <div className="flex items-end gap-3">
+          <div className="flex flex-wrap items-end gap-3">
             <Button onClick={doInsert} disabled={busy}>
               Insertar
             </Button>
@@ -327,7 +327,7 @@ export default function HeapPage() {
               Eliminar
             </Button>
           </div>
-          <div className="flex items-end gap-3">
+          <div className="flex flex-wrap items-end gap-3">
             <TextInput
               label="Una lista"
               value={list}

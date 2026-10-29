@@ -118,21 +118,26 @@ function IconHeap() {
 }
 
 const LINKS = [
-  { href: "/", label: "Inicio", Icon: IconHome },
-  { href: "/bst", label: "Árbol", Icon: IconTree },
-  { href: "/heap", label: "Montículo", Icon: IconHeap },
-  { href: "/graph", label: "Grafos", Icon: IconGraph },
-  { href: "/hash", label: "Tabla hash", Icon: IconHash },
-  { href: "/sets", label: "Conjuntos", Icon: IconSet },
+  { href: "/", label: "Inicio", short: "Inicio", Icon: IconHome },
+  { href: "/bst", label: "Árbol de búsqueda", short: "Árbol", Icon: IconTree },
+  { href: "/heap", label: "Montículo", short: "Montículo", Icon: IconHeap },
+  { href: "/graph", label: "Grafos", short: "Grafos", Icon: IconGraph },
+  { href: "/hash", label: "Tabla hash", short: "Hash", Icon: IconHash },
+  { href: "/sets", label: "Conjuntos", short: "Conjuntos", Icon: IconSet },
 ];
 
-/** Barra lateral monocroma con las páginas de la aplicación. */
+/**
+ * Navegación de la aplicación. En móvil es una barra horizontal con scroll en
+ * la parte de arriba; a partir de `md` pasa a ser una columna fija a la
+ * izquierda. Se usa un solo DOM para no duplicar enlaces ni estados.
+ */
 export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r-2 border-black bg-white">
-      <div className="border-b-2 border-black px-4 py-5">
+    <aside className="sticky top-0 z-20 flex w-full shrink-0 flex-row items-stretch border-b-2 border-black bg-white md:h-screen md:w-60 md:flex-col md:border-r-2 md:border-b-0">
+      {/* Cabecera: solo en la columna de escritorio. */}
+      <div className="hidden border-b-2 border-black px-4 py-5 md:block">
         <p className="font-mono text-xl leading-none font-bold text-black">
           DS/
         </p>
@@ -141,34 +146,46 @@ export default function Sidebar() {
         </p>
       </div>
 
-      <nav className="flex flex-1 flex-col">
-        {LINKS.map(({ href, label, Icon }) => {
+      {/* En móvil, una marca compacta a la izquierda de la barra. */}
+      <Link
+        href="/"
+        className="flex shrink-0 items-center border-r-2 border-black px-3 font-mono text-sm leading-none font-bold md:hidden"
+        aria-label="Inicio"
+      >
+        DS/
+      </Link>
+
+      <nav className="flex min-w-0 flex-1 flex-row overflow-x-auto md:flex-col md:overflow-x-visible">
+        {LINKS.map(({ href, label, short, Icon }) => {
           const active =
             href === "/" ? pathname === "/" : pathname.startsWith(href);
           return (
             <Link
               key={href}
               href={href}
-              className={`flex items-center gap-3 border-b border-black px-4 py-3 text-xs font-bold tracking-wider uppercase transition-colors duration-150 ${
+              aria-current={active ? "page" : undefined}
+              className={`flex shrink-0 items-center gap-2 border-r border-black px-3 py-3 text-[11px] font-bold tracking-wider whitespace-nowrap uppercase transition-colors duration-150 md:gap-3 md:border-r-0 md:border-b md:px-4 md:text-xs ${
                 active
                   ? "bg-black text-white"
                   : "bg-white text-black hover:bg-neutral-200"
               }`}
             >
               <span
-                className={`inline-block h-2 w-2 border ${
+                className={`inline-block h-2 w-2 shrink-0 border ${
                   active ? "border-white bg-white" : "border-black bg-transparent"
                 }`}
                 aria-hidden
               />
               <Icon />
-              {label}
+              <span className="hidden sm:inline">{label}</span>
+              <span className="sm:hidden">{short}</span>
             </Link>
           );
         })}
       </nav>
 
-      <div className="border-t-2 border-black px-4 py-3">
+      {/* Pie: solo en la columna de escritorio. */}
+      <div className="hidden border-t-2 border-black px-4 py-3 md:block">
         <p className="text-[10px] tracking-wider text-black/50 uppercase">
           jeanvides.com
         </p>

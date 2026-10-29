@@ -435,7 +435,7 @@ export default function BstPage() {
             onEnter={insertOne}
             placeholder="42"
           />
-          <div className="flex items-end gap-3">
+          <div className="flex flex-wrap items-end gap-3">
             <Button onClick={insertOne} disabled={busy}>
               Insertar
             </Button>
@@ -446,7 +446,7 @@ export default function BstPage() {
               Eliminar
             </Button>
           </div>
-          <div className="flex items-end gap-3">
+          <div className="flex flex-wrap items-end gap-3">
             <TextInput
               label="Una lista"
               value={list}

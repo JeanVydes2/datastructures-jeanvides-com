@@ -438,7 +438,7 @@ export default function HashPage() {
 
         <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
           <StatusBar tone={shown.tone}>{shown.message || "…"}</StatusBar>
-          <div className="flex min-w-72 flex-col justify-center border-2 border-black bg-white px-4 py-2">
+          <div className="flex flex-col justify-center border-2 border-black bg-white px-4 py-2 md:min-w-72">
             <span className="text-[10px] font-bold tracking-[0.2em] text-black/60 uppercase">
               Resultado
             </span>
