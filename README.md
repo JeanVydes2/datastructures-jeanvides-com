@@ -37,6 +37,21 @@ tiene su propia página, seleccionable desde la barra lateral.
     completo, regular y orden topológico.
   - **Matriz y lista de adyacencia** en tablas, y dibujo con flechas, pesos y
     bucles sobre una disposición de fuerzas determinista.
+- **Tabla hash** (`/hash`): pares clave-valor con **direccionamiento abierto**
+  (sondeo lineal, cuadrático y doble hash) o **encadenamiento**. Cada
+  operación se anima casilla a casilla: la función hash, la colisión, el
+  sondeo, la colocación y el hallazgo. Al borrar en abierto queda una
+  **lápida** para no romper las cadenas de sondeo, y la tabla se
+  **redimensiona** (a un tamaño primo) cuando el factor de carga pasa de
+  0.75. Métricas: factor de carga, ocupadas, lápidas, colisiones, sondeos
+  medidos frente a los teóricos, y racimos.
+- **Conjuntos y diccionarios** (`/sets`): ambos sobre una tabla hash. Un
+  **conjunto** es la tabla cuyas claves son los elementos (el valor no
+  importa), así que no admite repetidos y la pertenencia es una búsqueda;
+  se operan unión, intersección, diferencia, diferencia simétrica,
+  subconjunto, superconjunto, disjunción e igualdad. Un **diccionario** es
+  la tabla guardando un valor por clave, con insertar, buscar, actualizar
+  y eliminar.
 - **Montículo** (`/heap`): **min-heap** y **max-heap** (conmutables), con
   inserción (burbujeo hacia arriba), **extracción** de la raíz y **eliminación
   de un valor cualquiera** (su hueco lo ocupa el último elemento, que sube o
@@ -68,9 +83,9 @@ build) y `npm run lint` (ESLint).
 ## Estructura
 
 ```
-app/            páginas (App Router): /, /bst, /heap, /graph y el layout
-components/     ui (tarjetas, botones), Sidebar, TreeCanvas y GraphCanvas (SVG)
-lib/            lógica pura: árbol binario, montículo, grafo y sus layouts
+app/            páginas: /, /bst, /heap, /graph, /hash, /sets y el layout
+components/     ui (tarjetas, botones), Sidebar, TreeCanvas y GraphCanvas
+lib/            lógica pura: árbol, montículo, grafo, tabla hash, conjuntos
 tests/          pruebas de la lógica con el runner de Node
 ```
 
@@ -87,5 +102,8 @@ que `heapRemove`) describe cómo se reemplaza el nodo eliminado, y `walk`,
 npm test     # node --test sobre tests/*.test.ts
 ```
 
-Cubren las operaciones y las métricas del grafo (grados, densidad, ciclos,
-bipartito, topológico, Dijkstra, disposición determinista).
+Cubren la lógica de las tres estructuras de tabla: el grafo (grados,
+densidad, ciclos, bipartito, topológico, Dijkstra, disposición
+determinista), la tabla hash (las tres funciones, los cuatro métodos,
+colisiones, lápidas, redimensionado, racimos) y los conjuntos (leyes de
+De Morgan, conmutatividad, subconjuntos) con el diccionario.

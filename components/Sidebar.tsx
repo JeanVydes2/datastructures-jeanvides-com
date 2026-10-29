@@ -42,6 +42,42 @@ function IconTree() {
   );
 }
 
+function IconSet() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="square"
+      className="h-4 w-4"
+      aria-hidden
+    >
+      <circle cx="9.5" cy="12" r="6" />
+      <circle cx="14.5" cy="12" r="6" />
+    </svg>
+  );
+}
+
+function IconHash() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="square"
+      className="h-4 w-4"
+      aria-hidden
+    >
+      <path d="M9 3 7 21" />
+      <path d="M17 3l-2 18" />
+      <path d="M3.5 8.5h17" />
+      <path d="M2.5 15.5h17" />
+    </svg>
+  );
+}
+
 function IconGraph() {
   return (
     <svg
@@ -86,6 +122,8 @@ const LINKS = [
   { href: "/bst", label: "Árbol", Icon: IconTree },
   { href: "/heap", label: "Montículo", Icon: IconHeap },
   { href: "/graph", label: "Grafos", Icon: IconGraph },
+  { href: "/hash", label: "Tabla hash", Icon: IconHash },
+  { href: "/sets", label: "Conjuntos", Icon: IconSet },
 ];
 
 /** Barra lateral monocroma con las páginas de la aplicación. */

@@ -20,6 +20,18 @@ const CARDS = [
     desc: "Dirigido o no, ponderado o no. BFS, DFS, Dijkstra, camino más corto, orden topológico, componentes, bipartito, matriz y lista de adyacencia.",
     num: "03",
   },
+  {
+    href: "/hash",
+    title: "Tabla hash",
+    desc: "Pares clave-valor con sondeo lineal, cuadrático, doble hash o encadenamiento. Colisiones, lápidas, factor de carga y redimensionado.",
+    num: "04",
+  },
+  {
+    href: "/sets",
+    title: "Conjuntos y diccionarios",
+    desc: "Ambos sobre una tabla hash. Unión, intersección, diferencia, subconjunto y pertenencia; y un diccionario clave→valor.",
+    num: "05",
+  },
 ];
 
 export default function Home() {
@@ -40,7 +52,7 @@ export default function Home() {
         </p>
       </header>
 
-      <div className="grid gap-0 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-0 sm:grid-cols-2">
         {CARDS.map((c) => (
           <Link key={c.href} href={c.href} className="group block">
             <Card className="h-full border-r-0 transition-colors duration-150 group-hover:bg-black group-hover:text-white sm:last:border-r-2">
